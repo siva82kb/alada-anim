@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discrete LDS (zero input) — ALADA</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a1a;
+      --muted: #666;
+      --accent: #2b6cb0;
+      --card-bg: #ffffff;
+      --border: #e2e2e2;
+      --arrow: #888;
+      --traj: #c0392b;
+      --traj-line: rgba(192, 57, 43, 0.55);
+      --seed: #2b6cb0;
+      --x1: #1f77b4;
+      --x2: #e07b00;
+      --delta: #16a34a;
+      --eig1: #9333ea;
+      --eig2: #0d9488;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 2.5rem 1.5rem 1.25rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+
+    header h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0.25rem 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    header a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    header a:hover { text-decoration: underline; }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .plots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .plots { grid-template-columns: 1fr; }
+    }
+
+    .plot-col { display: flex; flex-direction: column; min-width: 0; }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .panel h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .matrix input {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      font-size: 1rem;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--fg);
+      text-align: center;
+    }
+
+    .matrix input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.15);
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .presets button {
+      flex: 1 1 auto;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.78rem;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--fg);
+      cursor: pointer;
+    }
+    .presets button:hover { background: #e2e8f0; }
+
+    .info {
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+      background: #f7f7f7;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.6rem 0.7rem;
+      margin-bottom: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .buttons button {
+      flex: 1;
+      padding: 0.55rem 0.6rem;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    .buttons button.secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+    .buttons button:hover { filter: brightness(0.95); }
+
+    .speed {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.6rem;
+    }
+    .speed .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      flex: 1;
+    }
+    .speed button {
+      width: 2rem;
+      padding: 0.25rem 0;
+      font-size: 1rem;
+      line-height: 1;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      color: var(--fg);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .speed button:disabled { opacity: 0.4; cursor: default; }
+
+    .basis {
+      margin-bottom: 0.75rem;
+    }
+    .basis .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    .seg {
+      display: flex;
+    }
+    .seg button {
+      flex: 1;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.85rem;
+      background: #f1f5f9;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .seg button:first-child { border-radius: 4px 0 0 4px; }
+    .seg button:last-child  { border-radius: 0 4px 4px 0; border-left: none; }
+    .seg button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .seg button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .speed .value {
+      min-width: 2.5rem;
+      text-align: center;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      font-size: 0.85rem;
+    }
+
+    .plot-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    canvas#plot {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    canvas.timeplot {
+      display: block;
+      width: 100%;
+      aspect-ratio: 2 / 1;
+    }
+
+    .ts-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .ts-legend {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .ts-legend span::before {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 2px;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+    }
+    .ts-legend .x1::before { background: var(--x1); }
+    .ts-legend .x2::before { background: var(--x2); }
+
+    .legend {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+      border-radius: 50%;
+    }
+    .legend .arrow::before { background: var(--arrow); border-radius: 0; height: 2px; width: 14px; }
+    .legend .seed::before  { background: var(--seed); }
+    .legend .traj::before  { background: var(--traj); }
+    .legend .delta::before { background: var(--delta); border-radius: 0; height: 2px; width: 14px; }
+    .legend .eig1::before  { background: var(--eig1); border-radius: 0; height: 2px; width: 14px; }
+    .legend .eig2::before  { background: var(--eig2); border-radius: 0; height: 2px; width: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Discrete-Time Linear Dynamical System</h1>
+    <p>Zero-input system: <code>x[k+1] = A x[k]</code> &nbsp;·&nbsp; quiver shows <code>Ax − x</code></p>
+    <p><a href="index.html">← Back to all animations</a></p>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h2>Matrix A</h2>
+      <div class="matrix">
+        <input id="a11" type="number" step="0.05" value="0.95" />
+        <input id="a12" type="number" step="0.05" value="-0.30" />
+        <input id="a21" type="number" step="0.05" value="0.30" />
+        <input id="a22" type="number" step="0.05" value="0.95" />
+      </div>
+
+      <div class="presets">
+        <button data-preset="stable-spiral">Stable spiral</button>
+        <button data-preset="unstable-spiral">Unstable spiral</button>
+        <button data-preset="saddle">Saddle</button>
+        <button data-preset="stable-node">Stable node</button>
+        <button data-preset="rotation">Rotation</button>
+        <button data-preset="identity">Identity</button>
+      </div>
+
+      <div class="info" id="info">eigenvalues: —</div>
+
+      <div class="basis">
+        <span class="label">Time-series basis</span>
+        <div class="seg">
+          <button id="basis-std" class="active">Standard</button>
+          <button id="basis-eig">Eigen</button>
+        </div>
+      </div>
+
+      <p class="hint">Click on the plot to set the initial state <code>x[0]</code>.</p>
+
+      <div class="speed">
+        <span class="label">Speed</span>
+        <button id="slower" title="Slower">−</button>
+        <span class="value" id="speed-label">1×</span>
+        <button id="faster" title="Faster">+</button>
+      </div>
+
+      <div class="buttons">
+        <button id="play">Play</button>
+        <button id="step" class="secondary">Step</button>
+        <button id="reset" class="secondary">Reset</button>
+      </div>
+    </aside>
+
+    <section class="plots">
+      <div class="plot-col">
+        <div class="plot-wrap">
+          <canvas id="plot"></canvas>
+        </div>
+        <div class="legend">
+          <span class="arrow">Ax − x field</span>
+          <span class="seed">x[0]</span>
+          <span class="traj">trajectory x[k]</span>
+          <span class="delta">Ax[k] − x[k] at current step</span>
+          <span class="eig1">eigenspace v₁ &amp; component</span>
+          <span class="eig2">eigenspace v₂ &amp; component</span>
+        </div>
+      </div>
+
+      <div class="plot-col">
+        <div class="ts-stack">
+          <div class="plot-wrap">
+            <canvas id="timeplot1" class="timeplot"></canvas>
+          </div>
+          <div class="plot-wrap">
+            <canvas id="timeplot2" class="timeplot"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ---------- world / canvas setup ----------
+    const canvas = document.getElementById("plot");
+    const ctx = canvas.getContext("2d");
+    const tcanvas1 = document.getElementById("timeplot1");
+    const tctx1 = tcanvas1.getContext("2d");
+    const tcanvas2 = document.getElementById("timeplot2");
+    const tctx2 = tcanvas2.getContext("2d");
+    const VIEW = 3;                       // world extent: [-VIEW, VIEW] in x and y
+    const QUIVER_N = 17;                  // grid resolution along each axis
+
+    let cssSize = 600;                    // phase plot CSS size
+    let ts1W = 600, ts1H = 300;
+    let ts2W = 600, ts2H = 300;
+
+    function resizeOne(c, cx) {
+      const rect = c.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      c.width  = Math.round(rect.width)  * dpr;
+      c.height = Math.round(rect.height) * dpr;
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return [Math.round(rect.width), Math.round(rect.height)];
+    }
+
+    function resize() {
+      [cssSize] = resizeOne(canvas, ctx);
+      [ts1W, ts1H] = resizeOne(tcanvas1, tctx1);
+      [ts2W, ts2H] = resizeOne(tcanvas2, tctx2);
+      draw();
+    }
+    window.addEventListener("resize", resize);
+
+    function w2s(x, y) {
+      const sx = (x + VIEW) / (2 * VIEW) * cssSize;
+      const sy = cssSize - (y + VIEW) / (2 * VIEW) * cssSize;
+      return [sx, sy];
+    }
+    function s2w(sx, sy) {
+      const x = sx / cssSize * (2 * VIEW) - VIEW;
+      const y = (cssSize - sy) / cssSize * (2 * VIEW) - VIEW;
+      return [x, y];
+    }
+
+    // ---------- model state ----------
+    let A = [[0.95, -0.30], [0.30, 0.95]];
+    let eig = realEigen(A);               // null if complex
+    let x0 = null;                        // initial state set by click
+    let traj = [];                        // [[x,y], ...] iterates including x0
+    let playing = false;
+    let timer = null;
+    let tsBasis = "standard";              // "standard" or "eigen"
+    const BASE_STEP_MS = 350;
+    const SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
+    let speedIdx = SPEEDS.indexOf(1);
+    const stepInterval = () => BASE_STEP_MS / SPEEDS[speedIdx];
+    const MAX_STEPS = 400;
+
+    function readMatrix() {
+      const v = id => parseFloat(document.getElementById(id).value);
+      const m = [[v("a11"), v("a12")], [v("a21"), v("a22")]];
+      // sanitize NaN
+      for (let i = 0; i < 2; i++)
+        for (let j = 0; j < 2; j++)
+          if (!isFinite(m[i][j])) m[i][j] = 0;
+      return m;
+    }
+
+    function applyA(M, x) {
+      return [M[0][0]*x[0] + M[0][1]*x[1], M[1][0]*x[0] + M[1][1]*x[1]];
+    }
+
+    function eigenvalues2x2(M) {
+      const tr = M[0][0] + M[1][1];
+      const det = M[0][0]*M[1][1] - M[0][1]*M[1][0];
+      const disc = tr*tr - 4*det;
+      if (disc >= 0) {
+        const s = Math.sqrt(disc);
+        return [{re: (tr + s)/2, im: 0}, {re: (tr - s)/2, im: 0}];
+      } else {
+        const s = Math.sqrt(-disc);
+        return [{re: tr/2, im: s/2}, {re: tr/2, im: -s/2}];
+      }
+    }
+
+    function realEigen(M) {
+      const a = M[0][0], b = M[0][1], c = M[1][0], d = M[1][1];
+      const tr = a + d, det = a*d - b*c;
+      const disc = tr*tr - 4*det;
+      if (disc < 0) return null;
+      const s = Math.sqrt(disc);
+      const lams = [(tr + s)/2, (tr - s)/2];
+      const vecs = lams.map(lam => {
+        let v;
+        if (Math.abs(b) > 1e-10)      v = [b, lam - a];
+        else if (Math.abs(c) > 1e-10) v = [lam - d, c];
+        else                          v = (Math.abs(a - lam) < 1e-10) ? [1, 0] : [0, 1];
+        const m = Math.hypot(v[0], v[1]);
+        return m > 0 ? [v[0]/m, v[1]/m] : [1, 0];
+      });
+      // independence check
+      const cross = vecs[0][0]*vecs[1][1] - vecs[0][1]*vecs[1][0];
+      const independent = Math.abs(cross) > 1e-6;
+      return { lams, vecs, independent };
+    }
+
+    function decompose(x, v1, v2) {
+      const a = v1[0], b = v2[0], c = v1[1], d = v2[1];
+      const det = a*d - b*c;
+      if (Math.abs(det) < 1e-9) return null;
+      return [( d*x[0] - b*x[1]) / det,
+              (-c*x[0] + a*x[1]) / det];
+    }
+
+    function fmt(x) {
+      if (Math.abs(x) < 1e-10) x = 0;
+      return (x >= 0 ? " " : "") + x.toFixed(3);
+    }
+
+    function updateInfo() {
+      const e = eigenvalues2x2(A);
+      const mag = e.map(z => Math.sqrt(z.re*z.re + z.im*z.im));
+      const lines = [
+        `λ₁ = ${fmt(e[0].re)}${e[0].im !== 0 ? " + " + fmt(e[0].im) + "i" : ""}   |λ₁| = ${mag[0].toFixed(3)}`,
+        `λ₂ = ${fmt(e[1].re)}${e[1].im !== 0 ? " + " + fmt(e[1].im) + "i" : ""}   |λ₂| = ${mag[1].toFixed(3)}`,
+      ];
+      document.getElementById("info").textContent = lines.join("\n");
+    }
+
+    // ---------- drawing ----------
+    function clearCanvas() {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cssSize, cssSize);
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = "#eee";
+      ctx.lineWidth = 1;
+      for (let v = -VIEW; v <= VIEW + 1e-9; v += 1) {
+        const [sx, ] = w2s(v, 0);
+        const [, sy] = w2s(0, v);
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, cssSize); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(cssSize, sy); ctx.stroke();
+      }
+
+      ctx.strokeStyle = "#999";
+      ctx.lineWidth = 1.25;
+      const [ox, oy] = w2s(0, 0);
+      ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, cssSize); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(cssSize, oy); ctx.stroke();
+
+      ctx.fillStyle = "#888";
+      ctx.font = "11px -apple-system, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      for (let v = -VIEW; v <= VIEW + 1e-9; v += 1) {
+        if (v === 0) continue;
+        const [sx, ] = w2s(v, 0);
+        ctx.fillText(v.toFixed(0), sx + 2, oy + 2);
+        const [, sy] = w2s(0, v);
+        ctx.fillText(v.toFixed(0), ox + 2, sy + 2);
+      }
+    }
+
+    function drawArrow(x1, y1, x2, y2, color, lw = 1, headMax = 6) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.5) return;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      const head = Math.min(headMax, len * 0.35);
+      const ang = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(ang - 0.4), y2 - head * Math.sin(ang - 0.4));
+      ctx.lineTo(x2 - head * Math.cos(ang + 0.4), y2 - head * Math.sin(ang + 0.4));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawQuiver() {
+      const step = (2 * VIEW) / (QUIVER_N - 1);
+      // first pass: compute max magnitude for normalization
+      let maxMag = 0;
+      const samples = [];
+      for (let i = 0; i < QUIVER_N; i++) {
+        for (let j = 0; j < QUIVER_N; j++) {
+          const x = -VIEW + i * step;
+          const y = -VIEW + j * step;
+          const Ax = applyA(A, [x, y]);
+          const dx = Ax[0] - x, dy = Ax[1] - y;
+          const m = Math.hypot(dx, dy);
+          if (m > maxMag) maxMag = m;
+          samples.push([x, y, dx, dy, m]);
+        }
+      }
+      if (maxMag < 1e-9) return;
+
+      // scale so longest arrow ≈ 0.9 * grid spacing in world units
+      const target = step * 0.9;
+      const scale = target / maxMag;
+
+      for (const [x, y, dx, dy, m] of samples) {
+        const [sx1, sy1] = w2s(x, y);
+        const [sx2, sy2] = w2s(x + dx * scale, y + dy * scale);
+        // gentle magnitude-based shading
+        const t = m / maxMag;
+        const grey = Math.round(160 - 110 * t); // darker for larger
+        drawArrow(sx1, sy1, sx2, sy2, `rgb(${grey},${grey},${grey})`);
+      }
+    }
+
+    function eigenLineEndpoints(v) {
+      let t = Infinity;
+      if (Math.abs(v[0]) > 1e-9) t = Math.min(t, VIEW / Math.abs(v[0]));
+      if (Math.abs(v[1]) > 1e-9) t = Math.min(t, VIEW / Math.abs(v[1]));
+      return [[-t * v[0], -t * v[1]], [t * v[0], t * v[1]]];
+    }
+
+    function drawEigenspaces() {
+      if (!eig || !eig.independent) return;
+      const colors = [getCSS("--eig1"), getCSS("--eig2")];
+      ctx.save();
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 1.25;
+      for (let i = 0; i < 2; i++) {
+        const [p1, p2] = eigenLineEndpoints(eig.vecs[i]);
+        const [s1x, s1y] = w2s(p1[0], p1[1]);
+        const [s2x, s2y] = w2s(p2[0], p2[1]);
+        ctx.strokeStyle = colors[i];
+        ctx.beginPath();
+        ctx.moveTo(s1x, s1y);
+        ctx.lineTo(s2x, s2y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawComponents() {
+      if (!eig || !eig.independent || !traj.length) return;
+      const cur = traj[traj.length - 1];
+      const c = decompose(cur, eig.vecs[0], eig.vecs[1]);
+      if (!c) return;
+      const colors = [getCSS("--eig1"), getCSS("--eig2")];
+      const [ox, oy] = w2s(0, 0);
+      for (let i = 0; i < 2; i++) {
+        const ex = c[i] * eig.vecs[i][0];
+        const ey = c[i] * eig.vecs[i][1];
+        const [tx, ty] = w2s(ex, ey);
+        drawArrow(ox, oy, tx, ty, colors[i], 1.5, 8);
+      }
+    }
+
+    function drawTrajectory() {
+      if (!traj.length) return;
+
+      // connecting line
+      ctx.strokeStyle = getCSS("--traj-line");
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      for (let i = 0; i < traj.length; i++) {
+        const [sx, sy] = w2s(traj[i][0], traj[i][1]);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+
+      // points
+      for (let i = 1; i < traj.length; i++) {
+        const [sx, sy] = w2s(traj[i][0], traj[i][1]);
+        ctx.fillStyle = getCSS("--traj");
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // x[0] marker
+      const [sx0, sy0] = w2s(traj[0][0], traj[0][1]);
+      ctx.fillStyle = getCSS("--seed");
+      ctx.beginPath();
+      ctx.arc(sx0, sy0, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // delta arrow at current step: from x[k] to A x[k]
+      const cur = traj[traj.length - 1];
+      const nxt = applyA(A, cur);
+      const [cx, cy] = w2s(cur[0], cur[1]);
+      const [nx, ny] = w2s(nxt[0], nxt[1]);
+      drawArrow(cx, cy, nx, ny, getCSS("--delta"), 2.2, 10);
+    }
+
+    function getCSS(varName) {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    function drawTimePlot(tctx, tsW, tsH, values, color, label) {
+      tctx.fillStyle = "#ffffff";
+      tctx.fillRect(0, 0, tsW, tsH);
+
+      const padL = 36, padR = 12, padT = 12, padB = 24;
+      const W = tsW - padL - padR;
+      const H = tsH - padT - padB;
+
+      // axes box
+      tctx.strokeStyle = "#ddd";
+      tctx.lineWidth = 1;
+      tctx.strokeRect(padL, padT, W, H);
+
+      const N = values.length;
+      const kMax = Math.max(N - 1, 10);
+
+      // y range from this series (auto-scale per state)
+      let yMin = -1, yMax = 1;
+      if (N > 0) {
+        yMin = Infinity; yMax = -Infinity;
+        for (const v of values) {
+          if (v < yMin) yMin = v;
+          if (v > yMax) yMax = v;
+        }
+        if (yMin === yMax) { yMin -= 1; yMax += 1; }
+        const pad = (yMax - yMin) * 0.1;
+        yMin -= pad; yMax += pad;
+      }
+
+      const tx = k => padL + (kMax === 0 ? 0 : (k / kMax) * W);
+      const ty = v => padT + H - ((v - yMin) / (yMax - yMin)) * H;
+
+      // y=0 reference line
+      if (yMin < 0 && yMax > 0) {
+        const y0 = ty(0);
+        tctx.strokeStyle = "#ccc";
+        tctx.setLineDash([3, 3]);
+        tctx.beginPath();
+        tctx.moveTo(padL, y0); tctx.lineTo(padL + W, y0);
+        tctx.stroke();
+        tctx.setLineDash([]);
+      }
+
+      // tick labels + grid
+      tctx.fillStyle = "#888";
+      tctx.font = "11px -apple-system, sans-serif";
+      tctx.textAlign = "right";
+      tctx.textBaseline = "middle";
+      const yTicks = niceTicks(yMin, yMax, 4);
+      for (const yv of yTicks) {
+        const yp = ty(yv);
+        tctx.fillText(yv.toFixed(2), padL - 4, yp);
+        tctx.strokeStyle = "#f0f0f0";
+        tctx.beginPath();
+        tctx.moveTo(padL, yp); tctx.lineTo(padL + W, yp);
+        tctx.stroke();
+      }
+
+      tctx.textAlign = "center";
+      tctx.textBaseline = "top";
+      const kTicks = niceIntTicks(0, kMax, 6);
+      for (const kv of kTicks) {
+        const xp = tx(kv);
+        tctx.fillText(String(kv), xp, padT + H + 4);
+        tctx.strokeStyle = "#f0f0f0";
+        tctx.beginPath();
+        tctx.moveTo(xp, padT); tctx.lineTo(xp, padT + H);
+        tctx.stroke();
+      }
+
+      // axis label
+      tctx.fillStyle = "#666";
+      tctx.font = "11px -apple-system, sans-serif";
+      tctx.textAlign = "center";
+      tctx.fillText("k", padL + W / 2, tsH - 4);
+
+      // series label in top-left of plot area
+      tctx.fillStyle = color;
+      tctx.font = "600 12px -apple-system, sans-serif";
+      tctx.textAlign = "left";
+      tctx.textBaseline = "top";
+      tctx.fillText(label, padL + 6, padT + 4);
+
+      if (N === 0) return;
+
+      drawSeries(tctx, values, color, tx, ty);
+    }
+
+    function drawSeries(tctx, values, color, tx, ty) {
+      tctx.strokeStyle = color;
+      tctx.fillStyle = color;
+      tctx.lineWidth = 2.4;
+      tctx.beginPath();
+      for (let k = 0; k < values.length; k++) {
+        const xp = tx(k), yp = ty(values[k]);
+        if (k === 0) tctx.moveTo(xp, yp); else tctx.lineTo(xp, yp);
+      }
+      tctx.stroke();
+      for (let k = 0; k < values.length; k++) {
+        const xp = tx(k), yp = ty(values[k]);
+        tctx.beginPath();
+        tctx.arc(xp, yp, 2.6, 0, Math.PI * 2);
+        tctx.fill();
+      }
+    }
+
+    function computeSeries() {
+      if (tsBasis === "eigen" && eig && eig.independent) {
+        const s1 = [], s2 = [];
+        for (const p of traj) {
+          const c = decompose(p, eig.vecs[0], eig.vecs[1]);
+          if (!c) { s1.push(0); s2.push(0); continue; }
+          s1.push(c[0]); s2.push(c[1]);
+        }
+        return {
+          s1, s2,
+          color1: getCSS("--eig1"), color2: getCSS("--eig2"),
+          label1: "c₁[k]  (along v₁)",
+          label2: "c₂[k]  (along v₂)",
+        };
+      }
+      return {
+        s1: traj.map(p => p[0]),
+        s2: traj.map(p => p[1]),
+        color1: getCSS("--x1"), color2: getCSS("--x2"),
+        label1: "x₁[k]",
+        label2: "x₂[k]",
+      };
+    }
+
+    function niceTicks(lo, hi, n) {
+      const span = hi - lo;
+      if (span <= 0) return [lo];
+      const raw = span / n;
+      const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const norm = raw / mag;
+      let step;
+      if (norm < 1.5) step = 1 * mag;
+      else if (norm < 3) step = 2 * mag;
+      else if (norm < 7) step = 5 * mag;
+      else step = 10 * mag;
+      const start = Math.ceil(lo / step) * step;
+      const out = [];
+      for (let v = start; v <= hi + 1e-9; v += step) out.push(v);
+      return out;
+    }
+
+    function niceIntTicks(lo, hi, n) {
+      const span = hi - lo;
+      const raw = Math.max(1, Math.round(span / n));
+      const out = [];
+      for (let v = lo; v <= hi; v += raw) out.push(v);
+      if (out[out.length - 1] !== hi) out.push(hi);
+      return out;
+    }
+
+    function draw() {
+      clearCanvas();
+      drawGrid();
+      drawQuiver();
+      drawEigenspaces();
+      drawTrajectory();
+      drawComponents();
+      const s = computeSeries();
+      drawTimePlot(tctx1, ts1W, ts1H, s.s1, s.color1, s.label1);
+      drawTimePlot(tctx2, ts2W, ts2H, s.s2, s.color2, s.label2);
+    }
+
+    // ---------- interaction ----------
+    canvas.addEventListener("pointerdown", e => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const [x, y] = s2w(sx, sy);
+      x0 = [x, y];
+      traj = [[x, y]];
+      stopPlay();
+      draw();
+    });
+
+    function step() {
+      if (!traj.length) return false;
+      const last = traj[traj.length - 1];
+      const next = applyA(A, last);
+      // bail if blowing up to keep canvas usable
+      if (Math.abs(next[0]) > 1e6 || Math.abs(next[1]) > 1e6) return false;
+      traj.push(next);
+      if (traj.length > MAX_STEPS) traj.shift();
+      return true;
+    }
+
+    function startPlay() {
+      if (playing || !traj.length) return;
+      playing = true;
+      document.getElementById("play").textContent = "Pause";
+      timer = setInterval(() => {
+        const ok = step();
+        draw();
+        if (!ok) stopPlay();
+      }, stepInterval());
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById("play").textContent = "Play";
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    document.getElementById("play").addEventListener("click", () => {
+      if (!traj.length) return;
+      if (playing) stopPlay(); else startPlay();
+    });
+
+    document.getElementById("step").addEventListener("click", () => {
+      if (!traj.length) return;
+      stopPlay();
+      step();
+      draw();
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      stopPlay();
+      if (x0) traj = [x0.slice()]; else traj = [];
+      draw();
+    });
+
+    function fmtSpeed(v) {
+      return (v < 1 ? v.toString() : v.toFixed(0)) + "×";
+    }
+    function setSpeed(idx) {
+      speedIdx = Math.max(0, Math.min(SPEEDS.length - 1, idx));
+      document.getElementById("speed-label").textContent = fmtSpeed(SPEEDS[speedIdx]);
+      document.getElementById("slower").disabled = (speedIdx === 0);
+      document.getElementById("faster").disabled = (speedIdx === SPEEDS.length - 1);
+      if (playing) {
+        clearInterval(timer);
+        timer = setInterval(() => {
+          const ok = step();
+          draw();
+          if (!ok) stopPlay();
+        }, stepInterval());
+      }
+    }
+    document.getElementById("slower").addEventListener("click", () => setSpeed(speedIdx - 1));
+    document.getElementById("faster").addEventListener("click", () => setSpeed(speedIdx + 1));
+    setSpeed(speedIdx);
+
+    function setBasis(b) {
+      if (b === "eigen" && (!eig || !eig.independent)) return;
+      tsBasis = b;
+      refreshBasisUI();
+      draw();
+    }
+    document.getElementById("basis-std").addEventListener("click", () => setBasis("standard"));
+    document.getElementById("basis-eig").addEventListener("click", () => setBasis("eigen"));
+    refreshBasisUI();
+
+    // ---------- matrix input wiring ----------
+    function refreshBasisUI() {
+      const eigOk = !!(eig && eig.independent);
+      document.getElementById("basis-eig").disabled = !eigOk;
+      if (!eigOk && tsBasis === "eigen") tsBasis = "standard";
+      document.getElementById("basis-std").classList.toggle("active", tsBasis === "standard");
+      document.getElementById("basis-eig").classList.toggle("active", tsBasis === "eigen");
+    }
+
+    function onMatrixChanged() {
+      A = readMatrix();
+      eig = realEigen(A);
+      stopPlay();
+      if (x0) traj = [x0.slice()];
+      updateInfo();
+      refreshBasisUI();
+      draw();
+    }
+
+    for (const id of ["a11", "a12", "a21", "a22"]) {
+      document.getElementById(id).addEventListener("input", onMatrixChanged);
+    }
+
+    // ---------- presets ----------
+    const PRESETS = {
+      "stable-spiral":   [[0.95, -0.30], [0.30, 0.95]],
+      "unstable-spiral": [[1.05, -0.30], [0.30, 1.05]],
+      "saddle":          [[1.20,  0.00], [0.00, 0.80]],
+      "stable-node":     [[0.80,  0.00], [0.00, 0.50]],
+      "rotation":        [[Math.cos(0.4), -Math.sin(0.4)], [Math.sin(0.4), Math.cos(0.4)]],
+      "identity":        [[1.00,  0.00], [0.00, 1.00]],
+    };
+
+    document.querySelectorAll(".presets button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const M = PRESETS[btn.dataset.preset];
+        if (!M) return;
+        document.getElementById("a11").value = M[0][0].toFixed(2);
+        document.getElementById("a12").value = M[0][1].toFixed(2);
+        document.getElementById("a21").value = M[1][0].toFixed(2);
+        document.getElementById("a22").value = M[1][1].toFixed(2);
+        onMatrixChanged();
+      });
+    });
+
+    // ---------- init ----------
+    updateInfo();
+    resize();
+  </script>
+</body>
+</html>
