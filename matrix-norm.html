@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Induced Matrix Norms — ALADA</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a1a;
+      --muted: #666;
+      --accent: #2b6cb0;
+      --card-bg: #ffffff;
+      --border: #e2e2e2;
+      --x-color: #2b6cb0;
+      --ax-color: #c0392b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 2.5rem 1.5rem 1.25rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+    header h1 { margin: 0 0 0.25rem; font-size: 1.75rem; letter-spacing: -0.02em; }
+    header p  { margin: 0.25rem 0; color: var(--muted); font-size: 0.95rem; }
+    header a  { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+    header a:hover { text-decoration: underline; }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    .panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .matrix input {
+      width: 100%;
+      padding: 0.45rem 0.5rem;
+      font-size: 0.95rem;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      text-align: center;
+    }
+    .matrix input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(43,108,176,0.15);
+    }
+
+    .field { margin-bottom: 0.85rem; }
+    .field label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+
+    .seg { display: flex; margin-bottom: 1rem; }
+    .seg button {
+      flex: 1;
+      padding: 0.4rem 0.4rem;
+      font-size: 0.85rem;
+      background: #f1f5f9;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .seg button:first-child { border-radius: 4px 0 0 4px; }
+    .seg button:last-child  { border-radius: 0 4px 4px 0; border-left: none; }
+    .seg button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .slider-row label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+    .buttons { display: flex; gap: 0.4rem; margin-top: 0.85rem; }
+    .buttons button {
+      flex: 1;
+      padding: 0.5rem 0.4rem;
+      font-size: 0.88rem;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    .buttons button.secondary { background: #fff; color: var(--accent); }
+    .buttons button:hover { filter: brightness(0.95); }
+
+    .info-rows {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      font-size: 0.82rem;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 0.3rem;
+    }
+    .info-row .key { color: var(--muted); }
+    .info-row .val { font-weight: 500; }
+    .info-row .val.highlight { color: var(--ax-color); font-weight: 700; }
+
+    .plots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .plots { grid-template-columns: 1fr; } }
+
+    .plot-col { display: flex; flex-direction: column; min-width: 0; }
+
+    .plot-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem;
+    }
+
+    canvas.plot {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+    }
+
+    .plot-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      margin: 0.4rem 0 0;
+    }
+
+    .legend {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 14px;
+      height: 2px;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+    }
+    .legend .unit-ball::before  { background: #aaa; }
+    .legend .x-vec::before      { background: var(--x-color); }
+    .legend .img-curve::before  { background: #bbb; }
+    .legend .norm-ball::before  { background: var(--ax-color); }
+    .legend .ax-vec::before     { background: var(--ax-color); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Induced Matrix Norms</h1>
+    <p><code>‖A‖ = max<sub>‖x‖=1</sub> ‖Ax‖</code> &nbsp;for a 2×2 matrix in ℝ²</p>
+    <p><a href="index.html">← Back to all animations</a></p>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h2>Matrix A</h2>
+      <div class="matrix">
+        <input id="a11" type="number" step="0.1" value="1.5" />
+        <input id="a12" type="number" step="0.1" value="0.5" />
+        <input id="a21" type="number" step="0.1" value="0.3" />
+        <input id="a22" type="number" step="0.1" value="1.0" />
+      </div>
+
+      <div class="field">
+        <label>Vector norm</label>
+        <div class="seg">
+          <button class="norm-btn" data-p="1">1</button>
+          <button class="norm-btn active" data-p="2">2</button>
+          <button class="norm-btn" data-p="Inf">∞</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="slider-row">
+          <label>x position on unit ball <span id="slider-pct">0%</span></label>
+        </div>
+        <input id="slider-s" type="range" min="0" max="1000" step="1" value="0" />
+      </div>
+
+      <div class="buttons">
+        <button id="play">Play</button>
+        <button id="reset" class="secondary">Reset</button>
+      </div>
+
+      <div class="info-rows">
+        <div class="info-row">
+          <span class="key">‖x‖</span>
+          <span class="val" id="info-xn">1.000</span>
+        </div>
+        <div class="info-row">
+          <span class="key">‖Ax‖</span>
+          <span class="val" id="info-axn">—</span>
+        </div>
+        <div class="info-row">
+          <span class="key">‖A‖ (induced)</span>
+          <span class="val highlight" id="info-ind">—</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="plots">
+      <div class="plot-col">
+        <div class="plot-wrap">
+          <canvas id="canvas-in" class="plot"></canvas>
+        </div>
+        <p class="plot-label">Input space — unit ball &amp; x</p>
+        <div class="legend">
+          <span class="unit-ball">unit ball</span>
+          <span class="x-vec">x</span>
+        </div>
+      </div>
+
+      <div class="plot-col">
+        <div class="plot-wrap">
+          <canvas id="canvas-out" class="plot"></canvas>
+        </div>
+        <p class="plot-label">Output space — image &amp; Ax</p>
+        <div class="legend">
+          <span class="img-curve">image of unit ball</span>
+          <span class="norm-ball">‖Ax‖ norm ball</span>
+          <span class="ax-vec">Ax</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ── constants ────────────────────────────────────────────────────────
+    const SAMPLE_N  = 600;
+    const VIEW_IN   = 1.55;
+    const PLAY_STEP = 0.0012;   // per rAF frame
+
+    // ── state ────────────────────────────────────────────────────────────
+    let A    = [[1.5, 0.5], [0.3, 1.0]];
+    let p    = 2;
+    let s    = 0;               // ∈ [0, 1)
+    let playing = false;
+    let rafId   = null;
+    let viewOut = 1.55;         // auto-scaled for right plot
+
+    // ── canvas setup ─────────────────────────────────────────────────────
+    const canvasIn  = document.getElementById('canvas-in');
+    const canvasOut = document.getElementById('canvas-out');
+    const ctxIn     = canvasIn.getContext('2d');
+    const ctxOut    = canvasOut.getContext('2d');
+    let cssIn = 400, cssOut = 400;
+
+    function resizeCanvas(c, cx) {
+      const r = c.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const sz = Math.round(r.width);
+      c.width  = sz * dpr;
+      c.height = sz * dpr;
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return sz;
+    }
+
+    function resize() {
+      cssIn  = resizeCanvas(canvasIn,  ctxIn);
+      cssOut = resizeCanvas(canvasOut, ctxOut);
+      draw();
+    }
+    window.addEventListener('resize', resize);
+
+    // world → screen helpers (parameterised by view and css size)
+    function w2s(x, y, view, size) {
+      return [(x + view) / (2 * view) * size,
+              size - (y + view) / (2 * view) * size];
+    }
+
+    // ── maths helpers ─────────────────────────────────────────────────────
+    function applyA(M, v) {
+      return [M[0][0]*v[0] + M[0][1]*v[1],
+              M[1][0]*v[0] + M[1][1]*v[1]];
+    }
+
+    function pNorm(v, q) {
+      if (q === 1)   return Math.abs(v[0]) + Math.abs(v[1]);
+      if (q === 2)   return Math.hypot(v[0], v[1]);
+      return Math.max(Math.abs(v[0]), Math.abs(v[1]));
+    }
+
+    // returns a unit vector at position s ∈ [0,1) on the p-norm unit ball
+    function unitVec(s, q) {
+      s = ((s % 1) + 1) % 1;
+      if (q === 2) {
+        const θ = s * 2 * Math.PI;
+        return [Math.cos(θ), Math.sin(θ)];
+      }
+      const corners = q === 1
+        ? [[1,0],[0,1],[-1,0],[0,-1]]
+        : [[1,-1],[1,1],[-1,1],[-1,-1]];
+      const t   = s * 4;
+      const seg = Math.min(Math.floor(t), 3);
+      const u   = t - seg;
+      const [x1,y1] = corners[seg];
+      const [x2,y2] = corners[(seg+1) % 4];
+      return [x1 + u*(x2-x1), y1 + u*(y2-y1)];
+    }
+
+    function computeViewOut() {
+      let mx = 0;
+      for (let i = 0; i < SAMPLE_N; i++) {
+        const Ax = applyA(A, unitVec(i/SAMPLE_N, p));
+        mx = Math.max(mx, Math.abs(Ax[0]), Math.abs(Ax[1]));
+      }
+      viewOut = Math.max(mx * 1.35, 1.0);
+    }
+
+    function inducedNorm() {
+      let mx = 0;
+      for (let i = 0; i < SAMPLE_N; i++) {
+        mx = Math.max(mx, pNorm(applyA(A, unitVec(i/SAMPLE_N, p)), p));
+      }
+      return mx;
+    }
+
+    // ── drawing helpers ───────────────────────────────────────────────────
+    function drawAxes(ctx, view, size) {
+      const [ox, oy] = w2s(0, 0, view, size);
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth   = 1;
+      ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(size, oy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, size); ctx.stroke();
+    }
+
+    function drawArrow(ctx, sx1, sy1, sx2, sy2, color, lw = 2, headMax = 10) {
+      const dx = sx2 - sx1, dy = sy2 - sy1;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return;
+      ctx.strokeStyle = color;
+      ctx.fillStyle   = color;
+      ctx.lineWidth   = lw;
+      ctx.beginPath();
+      ctx.moveTo(sx1, sy1);
+      ctx.lineTo(sx2, sy2);
+      ctx.stroke();
+      const head = Math.min(headMax, len * 0.3);
+      const ang  = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(sx2, sy2);
+      ctx.lineTo(sx2 - head*Math.cos(ang-0.4), sy2 - head*Math.sin(ang-0.4));
+      ctx.lineTo(sx2 - head*Math.cos(ang+0.4), sy2 - head*Math.sin(ang+0.4));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawDot(ctx, sx, sy, color, r = 4.5) {
+      ctx.fillStyle   = color;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth   = 1.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // draw the p-norm ball boundary of radius r, centred at world (cx,cy)
+    function drawNormBallBoundary(ctx, view, size, cx, cy, r, q, style) {
+      ctx.save();
+      Object.assign(ctx, style);
+      if (style.lineDash) ctx.setLineDash(style.lineDash);
+      ctx.beginPath();
+      const N = q === 2 ? 200 : 4;
+      for (let i = 0; i <= N; i++) {
+        const u = unitVec(i/N, q);
+        const [sx, sy] = w2s(cx + u[0]*r, cy + u[1]*r, view, size);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── main draw ────────────────────────────────────────────────────────
+    function drawInputPlot() {
+      const ctx  = ctxIn;
+      const size = cssIn;
+      const view = VIEW_IN;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, size, size);
+      drawAxes(ctx, view, size);
+
+      // unit ball boundary
+      drawNormBallBoundary(ctx, view, size, 0, 0, 1, p, {
+        strokeStyle: '#aaaaaa', lineWidth: 1.2, lineDash: []
+      });
+
+      // current x: arrow + dot
+      const x  = unitVec(s, p);
+      const [ox, oy]   = w2s(0, 0, view, size);
+      const [sxX, syX] = w2s(x[0], x[1], view, size);
+      drawArrow(ctx, ox, oy, sxX, syX, '#2b6cb0', 2, 10);
+      drawDot(ctx, sxX, syX, '#2b6cb0');
+    }
+
+    function drawOutputPlot() {
+      const ctx  = ctxOut;
+      const size = cssOut;
+      const view = viewOut;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, size, size);
+      drawAxes(ctx, view, size);
+
+      // full image of unit ball (grey curve)
+      ctx.strokeStyle = '#cccccc';
+      ctx.lineWidth   = 1.2;
+      ctx.beginPath();
+      for (let i = 0; i <= SAMPLE_N; i++) {
+        const Ax = applyA(A, unitVec(i/SAMPLE_N, p));
+        const [sx, sy] = w2s(Ax[0], Ax[1], view, size);
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      const x    = unitVec(s, p);
+      const Ax   = applyA(A, x);
+      const axNorm = pNorm(Ax, p);
+
+      // norm ball of radius ‖Ax‖ centred at origin (dashed red)
+      drawNormBallBoundary(ctx, view, size, 0, 0, axNorm, p, {
+        strokeStyle: '#c0392b', lineWidth: 1.4, lineDash: [5, 4]
+      });
+
+      // Ax: arrow + dot
+      const [ox, oy]    = w2s(0, 0, view, size);
+      const [sxAx, syAx] = w2s(Ax[0], Ax[1], view, size);
+      drawArrow(ctx, ox, oy, sxAx, syAx, '#c0392b', 2, 10);
+      drawDot(ctx, sxAx, syAx, '#c0392b');
+    }
+
+    function updateInfo() {
+      const x    = unitVec(s, p);
+      const Ax   = applyA(A, x);
+      const xn   = pNorm(x, p);
+      const axn  = pNorm(Ax, p);
+      const ind  = inducedNorm();
+      document.getElementById('info-xn').textContent  = xn.toFixed(4);
+      document.getElementById('info-axn').textContent = axn.toFixed(4);
+      document.getElementById('info-ind').textContent = ind.toFixed(4);
+      document.getElementById('slider-pct').textContent =
+        (s * 100).toFixed(1) + '%';
+    }
+
+    function draw() {
+      drawInputPlot();
+      drawOutputPlot();
+      updateInfo();
+    }
+
+    // ── play loop ────────────────────────────────────────────────────────
+    function frame() {
+      s = (s + PLAY_STEP) % 1;
+      document.getElementById('slider-s').value = Math.round(s * 1000);
+      draw();
+      if (playing) rafId = requestAnimationFrame(frame);
+    }
+
+    function startPlay() {
+      playing = true;
+      document.getElementById('play').textContent = 'Pause';
+      rafId = requestAnimationFrame(frame);
+    }
+    function stopPlay() {
+      playing = false;
+      document.getElementById('play').textContent = 'Play';
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    document.getElementById('play').addEventListener('click', () => {
+      if (playing) stopPlay(); else startPlay();
+    });
+    document.getElementById('reset').addEventListener('click', () => {
+      stopPlay();
+      s = 0;
+      document.getElementById('slider-s').value = 0;
+      draw();
+    });
+
+    // ── slider ───────────────────────────────────────────────────────────
+    document.getElementById('slider-s').addEventListener('input', e => {
+      stopPlay();
+      s = parseInt(e.target.value) / 1000;
+      draw();
+    });
+
+    // ── norm selector ────────────────────────────────────────────────────
+    document.querySelectorAll('.norm-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.norm-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        p = btn.dataset.p === 'Inf' ? Infinity : parseInt(btn.dataset.p);
+        computeViewOut();
+        draw();
+      });
+    });
+
+    // ── matrix inputs ────────────────────────────────────────────────────
+    function readMatrix() {
+      const v = id => { const n = parseFloat(document.getElementById(id).value); return isFinite(n) ? n : 0; };
+      return [[v('a11'), v('a12')], [v('a21'), v('a22')]];
+    }
+    for (const id of ['a11','a12','a21','a22']) {
+      document.getElementById(id).addEventListener('input', () => {
+        A = readMatrix();
+        computeViewOut();
+        draw();
+      });
+    }
+
+    // ── init ─────────────────────────────────────────────────────────────
+    computeViewOut();
+    resize();
+  </script>
+</body>
+</html>

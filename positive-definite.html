@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Positive Definite Matrices — ALADA</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a1a;
+      --muted: #666;
+      --accent: #2b6cb0;
+      --card-bg: #ffffff;
+      --border: #e2e2e2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 2.5rem 1.5rem 1.25rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+    header h1 { margin: 0 0 0.25rem; font-size: 1.75rem; letter-spacing: -0.02em; }
+    header p  { margin: 0.25rem 0; color: var(--muted); font-size: 0.95rem; }
+    header a  { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+    header a:hover { text-decoration: underline; }
+
+    main {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+    .panel h2 { margin: 0 0 1rem; font-size: 1.05rem; }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+    .slider-row label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+      margin-bottom: 0.25rem;
+    }
+    .slider-row label span {
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .slider-row input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .matrix-section { margin-bottom: 1.1rem; }
+    .matrix-section h3 {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0 0 0.5rem;
+    }
+    .matrix-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      font-size: 1rem;
+    }
+    .matrix-bracket { font-size: 2.2rem; line-height: 1; color: #555; font-weight: 100; }
+    .matrix-entries {
+      display: grid;
+      grid-template-columns: repeat(2, 3.5rem);
+      gap: 0.2rem 0.4rem;
+      text-align: right;
+    }
+    .matrix-entries span { padding: 0.1rem 0; }
+
+    .info-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      margin-bottom: 1.1rem;
+      font-family: "SF Mono", Menlo, Monaco, monospace;
+      font-size: 0.82rem;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 0.35rem;
+    }
+    .info-row .key { color: var(--muted); }
+    .info-row .val { color: var(--fg); font-weight: 500; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      width: 100%;
+      text-align: center;
+    }
+
+    /* Three.js renderer container */
+    .render-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      height: 620px;
+    }
+
+    #gl-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Positive Definite Matrices</h1>
+    <p>Quadratic form <code>z = x<sup>T</sup>Ax</code> for a symmetric 2×2 matrix</p>
+    <p><a href="index.html">← Back to all animations</a></p>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h2>Parameters</h2>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <label>a <span id="val-a">1.00</span></label>
+          <input id="slider-a" type="range" min="-2" max="2" step="0.05" value="1" />
+        </div>
+        <div class="slider-row">
+          <label>b <span id="val-b">0.00</span></label>
+          <input id="slider-b" type="range" min="-2" max="2" step="0.05" value="0" />
+        </div>
+        <div class="slider-row">
+          <label>c <span id="val-c">1.00</span></label>
+          <input id="slider-c" type="range" min="-2" max="2" step="0.05" value="1" />
+        </div>
+      </div>
+
+      <div class="matrix-section">
+        <h3>Matrix</h3>
+        <div class="matrix-wrap">
+          <span class="matrix-bracket">[</span>
+          <div class="matrix-entries">
+            <span id="m11">1.00</span>
+            <span id="m12">0.00</span>
+            <span id="m21">0.00</span>
+            <span id="m22">1.00</span>
+          </div>
+          <span class="matrix-bracket">]</span>
+        </div>
+      </div>
+
+      <div class="info-rows">
+        <div class="info-row">
+          <span class="key">λ₁</span>
+          <span class="val" id="info-l1">1.000</span>
+        </div>
+        <div class="info-row">
+          <span class="key">λ₂</span>
+          <span class="val" id="info-l2">1.000</span>
+        </div>
+        <div class="info-row">
+          <span class="key">ac − b²</span>
+          <span class="val" id="info-det">1.000</span>
+        </div>
+        <div class="info-row">
+          <span class="key">tr(A)</span>
+          <span class="val" id="info-tr">2.000</span>
+        </div>
+      </div>
+
+      <span class="badge" id="badge">Positive Definite</span>
+    </aside>
+
+    <div class="render-card">
+      <canvas id="gl-canvas"></canvas>
+    </div>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ── constants ──────────────────────────────────────────────────────────
+    const NR      = 55;           // radial samples
+    const NT      = 130;          // angular samples (closed wrap: j/NT * 2π)
+    const DOMAIN  = 2.5;          // x₁, x₂ ∈ [-DOMAIN, DOMAIN]
+    const Z_RANGE = 25;           // colour scale maps z ∈ [-Z_RANGE, Z_RANGE]
+    const Z_SCALE = DOMAIN / Z_RANGE * 2;  // visual height scale (0.2)
+    const EPS     = 1e-9;
+
+    // ── Three.js scene ─────────────────────────────────────────────────────
+    const canvas    = document.getElementById('gl-canvas');
+    const renderer  = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setClearColor(0xffffff);
+
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 200);
+    camera.position.set(5.5, 4.0, 5.5);
+    camera.lookAt(0, 0, 0);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enablePan    = false;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0, 0);
+
+    // lights — high ambient keeps colours vivid, low directional gives gentle depth cue
+    scene.add(new THREE.AmbientLight(0xffffff, 0.80));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.35);
+    sun.position.set(3, 6, 4);
+    scene.add(sun);
+
+    // ── axes ───────────────────────────────────────────────────────────────
+    const AX_LEN  = DOMAIN + 0.55;
+    const Z_LEN   = DOMAIN;
+    const AX_MAT  = new THREE.LineBasicMaterial({ color: 0xcccccc });
+
+    function makeLine(x1, y1, z1, x2, y2, z2) {
+      const g = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x1, y1, z1),
+        new THREE.Vector3(x2, y2, z2),
+      ]);
+      return new THREE.Line(g, AX_MAT);
+    }
+
+    scene.add(makeLine(-AX_LEN, 0, 0,  AX_LEN, 0, 0));   // x₁
+    scene.add(makeLine(0, 0, -AX_LEN,  0, 0, AX_LEN));   // x₂
+    scene.add(makeLine(0, -Z_LEN, 0,   0, Z_LEN, 0));    // z = x^T A x
+
+    // ── z = 0 reference disk ───────────────────────────────────────────────
+    const diskGeo = new THREE.CircleGeometry(DOMAIN, NT);
+    const diskMat = new THREE.MeshBasicMaterial({
+      color: 0xbbbbbb, opacity: 0.15, transparent: true, side: THREE.DoubleSide,
+    });
+    const disk = new THREE.Mesh(diskGeo, diskMat);
+    disk.rotation.x = -Math.PI / 2;
+    scene.add(disk);
+
+    // ── surface geometry ───────────────────────────────────────────────────
+    const nVerts = NR * NT;
+    const posArr = new Float32Array(nVerts * 3);
+    const colArr = new Float32Array(nVerts * 3);
+    const idxArr = [];
+
+    // fixed x₁ (Three x) and x₂ (Three z) positions
+    for (let i = 0; i < NR; i++) {
+      const r = (i / (NR - 1)) * DOMAIN;
+      for (let j = 0; j < NT; j++) {
+        const t   = (j / NT) * 2 * Math.PI;
+        const idx = (i * NT + j) * 3;
+        posArr[idx    ] = r * Math.cos(t);  // x₁ → Three.x
+        posArr[idx + 1] = 0;                // z_value → Three.y (updated later)
+        posArr[idx + 2] = r * Math.sin(t);  // x₂ → Three.z
+      }
+    }
+
+    // triangles (quad strip per radial ring, closed in θ)
+    for (let i = 0; i < NR - 1; i++) {
+      for (let j = 0; j < NT; j++) {
+        const j1  = (j + 1) % NT;
+        const v00 = i * NT + j,   v01 = i * NT + j1;
+        const v10 = (i+1)*NT + j, v11 = (i+1)*NT + j1;
+        idxArr.push(v00, v10, v11, v00, v11, v01);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(colArr, 3));
+    geo.setIndex(idxArr);
+
+    const mat  = new THREE.MeshPhongMaterial({
+      vertexColors: true,
+      side:         THREE.DoubleSide,
+      shininess:    18,
+      specular:     new THREE.Color(0x222222),
+    });
+    scene.add(new THREE.Mesh(geo, mat));
+
+    // ── colour map ─────────────────────────────────────────────────────────
+    // blue #3b82f6 → green #22c55e → red #ef4444, symmetric around z = 0
+    const C_BLUE  = [0.196, 0.533, 0.741];   // #3288bd  steel blue (negative)
+    const C_GREEN = [0.965, 0.965, 0.965];   // #f7f7f7  near-white (zero)
+    const C_RED   = [0.839, 0.376, 0.302];   // #d6604d  burnt orange (positive)
+
+    function zToRGB(z) {
+      const t = Math.max(0, Math.min(1, (z + Z_RANGE) / (2 * Z_RANGE)));
+      const [a, b, c] = t < 0.5
+        ? [C_BLUE,  C_GREEN, t / 0.5]
+        : [C_GREEN, C_RED,   (t - 0.5) / 0.5];
+      return [a[0] + c*(b[0]-a[0]), a[1] + c*(b[1]-a[1]), a[2] + c*(b[2]-a[2])];
+    }
+
+    // ── surface update ─────────────────────────────────────────────────────
+    function updateSurface(a, b, c) {
+      const pos = geo.attributes.position.array;
+      const col = geo.attributes.color.array;
+      for (let i = 0; i < NR; i++) {
+        const r = (i / (NR - 1)) * DOMAIN;
+        for (let j = 0; j < NT; j++) {
+          const t    = (j / NT) * 2 * Math.PI;
+          const x1   = r * Math.cos(t);
+          const x2   = r * Math.sin(t);
+          const z    = a*x1*x1 + 2*b*x1*x2 + c*x2*x2;
+          const idx  = (i * NT + j) * 3;
+          pos[idx + 1] = z * Z_SCALE;
+          const [cr, cg, cb] = zToRGB(z);
+          col[idx] = cr; col[idx+1] = cg; col[idx+2] = cb;
+        }
+      }
+      geo.attributes.position.needsUpdate = true;
+      geo.attributes.color.needsUpdate    = true;
+      geo.computeVertexNormals();
+    }
+
+    // ── DOM helpers ────────────────────────────────────────────────────────
+    const EPS9 = 1e-9;
+
+    function eigenvalues(a, b, c) {
+      const tr   = a + c;
+      const det  = a*c - b*b;
+      const disc = Math.max(0, tr*tr - 4*det);
+      const s    = Math.sqrt(disc);
+      return [(tr + s)/2, (tr - s)/2];
+    }
+
+    function classify(l1, l2) {
+      const p1 = l1 >  EPS9, p2 = l2 >  EPS9;
+      const n1 = l1 < -EPS9, n2 = l2 < -EPS9;
+      const z1 = !p1 && !n1, z2 = !p2 && !n2;
+      if (z1 && z2) return { label: "Zero",                   color: "#374151", bg: "#f3f4f6" };
+      if (p1 && p2) return { label: "Positive Definite",      color: "#166534", bg: "#dcfce7" };
+      if (n1 && n2) return { label: "Negative Definite",      color: "#991b1b", bg: "#fee2e2" };
+      if ((p1&&z2)||(z1&&p2)) return { label: "Positive Semi-definite", color: "#365314", bg: "#ecfccb" };
+      if ((n1&&z2)||(z1&&n2)) return { label: "Negative Semi-definite", color: "#7c2d12", bg: "#ffedd5" };
+      return { label: "Indefinite", color: "#78350f", bg: "#fef3c7" };
+    }
+
+    function fmt2(v) { return v.toFixed(2); }
+    function fmt3(v) { return v.toFixed(3); }
+
+    function updateUI(a, b, c) {
+      document.getElementById('val-a').textContent = fmt2(a);
+      document.getElementById('val-b').textContent = fmt2(b);
+      document.getElementById('val-c').textContent = fmt2(c);
+      document.getElementById('m11').textContent = fmt2(a);
+      document.getElementById('m12').textContent = fmt2(b);
+      document.getElementById('m21').textContent = fmt2(b);
+      document.getElementById('m22').textContent = fmt2(c);
+
+      const [l1, l2] = eigenvalues(a, b, c);
+      document.getElementById('info-l1').textContent  = fmt3(l1);
+      document.getElementById('info-l2').textContent  = fmt3(l2);
+      document.getElementById('info-det').textContent = fmt3(a*c - b*b);
+      document.getElementById('info-tr').textContent  = fmt3(a + c);
+
+      const cls   = classify(l1, l2);
+      const badge = document.getElementById('badge');
+      badge.textContent       = cls.label;
+      badge.style.color       = cls.color;
+      badge.style.background  = cls.bg;
+    }
+
+    // ── main update ────────────────────────────────────────────────────────
+    function update() {
+      const a = parseFloat(document.getElementById('slider-a').value);
+      const b = parseFloat(document.getElementById('slider-b').value);
+      const c = parseFloat(document.getElementById('slider-c').value);
+      updateUI(a, b, c);
+      updateSurface(a, b, c);
+    }
+
+    for (const id of ['slider-a', 'slider-b', 'slider-c']) {
+      document.getElementById(id).addEventListener('input', update);
+    }
+
+    // ── resize ─────────────────────────────────────────────────────────────
+    const card = canvas.parentElement;
+    function resize() {
+      const w = card.clientWidth;
+      const h = card.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(card);
+    resize();
+
+    // ── render loop ────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ── init ───────────────────────────────────────────────────────────────
+    update();
+  </script>
+</body>
+</html>
