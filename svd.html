@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVD — Singular Value Decomposition</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <style>
+    :root {
+      --bg: #fafafa; --fg: #1a1a1a; --muted: #666;
+      --accent: #2b6cb0; --card: #fff; --bdr: #e2e2e2;
+      --c1: #9333ea; --c2: #0d9488;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--fg); line-height: 1.5;
+    }
+    header {
+      padding: 1.25rem 1.5rem; text-align: center;
+      border-bottom: 1px solid var(--bdr); background: var(--card);
+    }
+    header h1 { font-size: 1.4rem; }
+    header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.15rem; }
+
+    .layout {
+      display: flex; gap: 1rem; padding: 1rem; align-items: flex-start;
+    }
+    .ctrl {
+      width: 350px; flex-shrink: 0; background: var(--card);
+      border: 1px solid var(--bdr); border-radius: 8px; padding: 0.9rem;
+      display: flex; flex-direction: column; gap: 0.85rem;
+    }
+    .ctrl-title {
+      font-size: 0.71rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .ctrl-row { margin-bottom: 0.3rem; }
+    .ctrl-row label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 0.82rem; margin-bottom: 0.1rem;
+    }
+    .ctrl-row label .v { font-weight: 700; }
+    input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+
+    .btn-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .btn {
+      flex: 1; padding: 0.3rem 0.5rem; font-size: 0.82rem; font-weight: 600;
+      background: var(--card); border: 1px solid var(--bdr); border-radius: 5px;
+      cursor: pointer; color: var(--fg); white-space: nowrap;
+    }
+    .btn:hover { background: #f0f0f0; }
+    .btn.danger { color: #c0392b; border-color: #f5c6c6; }
+    .btn.danger:hover { background: #fff0f0; }
+
+    .mat-ctrl, .vec-disp {
+      background: #f5f5f5; border-radius: 5px; padding: 0.4rem 0.6rem;
+      text-align: center; overflow-x: auto;
+    }
+
+    .plots { display: flex; gap: 1rem; flex: 1; min-width: 0; }
+    .pw { flex: 1; min-width: 0; }
+    .plbl { font-size: 0.78rem; color: var(--muted); text-align: center; margin-bottom: 0.25rem; }
+    canvas {
+      width: 100%; aspect-ratio: 1;
+      border: 1px solid var(--bdr); border-radius: 6px; background: #fff; display: block;
+    }
+
+    .info {
+      margin: 0 1rem 1.5rem; padding: 0.85rem 1rem;
+      background: var(--card); border: 1px solid var(--bdr); border-radius: 8px;
+      display: flex; gap: 2.5rem; flex-wrap: wrap; align-items: flex-start;
+    }
+    .ib-title {
+      font-size: 0.71rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.3rem;
+    }
+    .ib-val { font-family: monospace; font-size: 0.85rem; line-height: 1.7; }
+    .legend { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.82rem; }
+    .leg-item { display: flex; align-items: center; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Singular Value Decomposition</h1>
+  <p>A = UΣV<sup>T</sup> — how A maps the unit circle in ℝ²</p>
+</header>
+
+<div class="layout">
+  <div class="ctrl">
+    <div>
+      <div class="ctrl-title">Right singular vectors (V)</div>
+      <div class="ctrl-row">
+        <label>θ<sub>V</sub> <span class="v" id="lbl-tV">0.00</span> rad</label>
+        <input type="range" id="sl-tV" min="0" max="6.2832" step="0.01" value="0">
+      </div>
+      <div class="vec-disp" id="vi-V"></div>
+    </div>
+
+    <div>
+      <div class="ctrl-title">Left singular vectors (U)</div>
+      <div class="ctrl-row">
+        <label>θ<sub>U</sub> <span class="v" id="lbl-tU">1.05</span> rad</label>
+        <input type="range" id="sl-tU" min="0" max="6.2832" step="0.01" value="1.047">
+      </div>
+      <div class="vec-disp" id="vi-U"></div>
+    </div>
+
+    <div>
+      <div class="ctrl-title">Singular values</div>
+      <div class="ctrl-row">
+        <label>σ₁ <span class="v" id="lbl-s1">2.00</span></label>
+        <input type="range" id="sl-s1" min="0" max="4" step="0.05" value="2.0">
+      </div>
+      <div class="ctrl-row">
+        <label>σ₂ <span class="v" id="lbl-s2">0.80</span></label>
+        <input type="range" id="sl-s2" min="0" max="4" step="0.05" value="0.8">
+      </div>
+    </div>
+
+    <div>
+      <div class="ctrl-title">Matrix A</div>
+      <div class="mat-ctrl" id="mat-ctrl"></div>
+    </div>
+
+    <div>
+      <div class="ctrl-title">Samples <span id="lbl-nsamples" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg);font-size:0.75rem"></span></div>
+      <div class="btn-row">
+        <button class="btn" onclick="addSamples(50)">+ 50</button>
+        <button class="btn" onclick="addSamples(200)">+ 200</button>
+        <button class="btn danger" onclick="clearSamples()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="plots">
+    <div class="pw">
+      <div class="plbl">Input space — right singular vectors (V)</div>
+      <canvas id="cvIn"></canvas>
+    </div>
+    <div class="pw">
+      <div class="plbl">Output space — image of unit circle</div>
+      <canvas id="cvOut"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="info">
+  <div class="ib">
+    <div class="ib-title">Singular values</div>
+    <div class="ib-val" id="sv-disp"></div>
+  </div>
+  <div class="ib">
+    <div class="ib-title">Legend</div>
+    <div class="legend">
+      <div class="leg-item">
+        <svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#9333ea" stroke-width="2.5"/></svg>
+        <span style="color:#9333ea">v₁ (input) → σ₁u₁ (output)</span>
+      </div>
+      <div class="leg-item">
+        <svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#0d9488" stroke-width="2.5"/></svg>
+        <span style="color:#0d9488">v₂ (input) → σ₂u₂ (output)</span>
+      </div>
+      <div class="leg-item">
+        <svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#aaa" stroke-width="1.5"/></svg>
+        <span>unit circle / image ellipse</span>
+      </div>
+      <div class="leg-item">
+        <svg width="14" height="14"><line x1="2" y1="2" x2="12" y2="12" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/><line x1="12" y1="2" x2="2" y2="12" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <span>click to probe x → Ax</span>
+      </div>
+      <div class="leg-item">
+        <svg width="14" height="10"><circle cx="7" cy="5" r="4" fill="rgba(59,130,246,0.65)"/></svg>
+        <span>samples (input)</span>
+      </div>
+      <div class="leg-item">
+        <svg width="14" height="10"><circle cx="7" cy="5" r="4" fill="rgba(234,88,12,0.65)"/></svg>
+        <span>samples (output)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAMPLE_N = 720;
+const VIEW = 4.5;
+let thetaV = 0, thetaU = 1.047, sigma1 = 2.0, sigma2 = 0.8;
+let samples = [];   // each entry: [x1, x2] uniform in unit disk
+let clickPt = null; // data-space point clicked in input canvas
+
+const cvIn  = document.getElementById('cvIn');
+const cvOut = document.getElementById('cvOut');
+const ctxIn  = cvIn.getContext('2d');
+const ctxOut = cvOut.getContext('2d');
+
+// ── Math ──────────────────────────────────────────────────────────────────
+const mv  = (M, v) => [M[0][0]*v[0]+M[0][1]*v[1], M[1][0]*v[0]+M[1][1]*v[1]];
+const mm  = (A, B) => [
+  [A[0][0]*B[0][0]+A[0][1]*B[1][0], A[0][0]*B[0][1]+A[0][1]*B[1][1]],
+  [A[1][0]*B[0][0]+A[1][1]*B[1][0], A[1][0]*B[0][1]+A[1][1]*B[1][1]]
+];
+const tr  = M => [[M[0][0],M[1][0]],[M[0][1],M[1][1]]];
+const rot = t => [[Math.cos(t),-Math.sin(t)],[Math.sin(t),Math.cos(t)]];
+
+function getA() {
+  return mm(rot(thetaU), mm([[sigma1,0],[0,sigma2]], tr(rot(thetaV))));
+}
+
+// unit circle point for parameter s ∈ [0,1)
+const circPt = s => { const t=s*2*Math.PI; return [Math.cos(t), Math.sin(t)]; };
+
+// ── Canvas coords ─────────────────────────────────────────────────────────
+const scx = (x, sz) => sz/2 + x*(sz/2)/VIEW;
+const scy = (y, sz) => sz/2 - y*(sz/2)/VIEW;
+
+// ── Draw helpers ──────────────────────────────────────────────────────────
+function drawAxes(ctx, sz) {
+  const c = sz/2;
+  ctx.save();
+  ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1; ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(0,c); ctx.lineTo(sz,c);
+  ctx.moveTo(c,0); ctx.lineTo(c,sz);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawArrow(ctx, x1,y1, x2,y2, col, lw, hm) {
+  lw = lw||2; hm = hm||10;
+  const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+  if (len < 2) return;
+  const ux=dx/len, uy=dy/len, hs=Math.min(hm, len*0.35);
+  ctx.save();
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=lw; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hs*0.8, y2-uy*hs*0.8); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*hs-uy*hs*0.4, y2-uy*hs+ux*hs*0.4);
+  ctx.lineTo(x2-ux*hs+uy*hs*0.4, y2-uy*hs-ux*hs*0.4);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawDot(ctx, x, y, col, r) {
+  r = r||4.5;
+  ctx.save();
+  ctx.fillStyle=col; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(x,y,r,0,2*Math.PI); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawLabel(ctx, tipX, tipY, ox, oy, txt, col) {
+  const dx=tipX-ox, dy=tipY-oy, len=Math.sqrt(dx*dx+dy*dy);
+  if (len < 1) return;
+  const nx=dx/len, ny=dy/len;
+  ctx.save();
+  ctx.fillStyle=col; ctx.font='bold 12px system-ui';
+  ctx.fillText(txt, tipX+nx*10, tipY+ny*10+4);
+  ctx.restore();
+}
+
+function drawSubspaceLine(ctx, dx, dy, sz, col) {
+  const tmax = Math.min(
+    Math.abs(dx) > 1e-6 ? VIEW / Math.abs(dx) : Infinity,
+    Math.abs(dy) > 1e-6 ? VIEW / Math.abs(dy) : Infinity
+  );
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.setLineDash([4, 5]);
+  ctx.beginPath();
+  ctx.moveTo(scx(-tmax*dx, sz), scy(-tmax*dy, sz));
+  ctx.lineTo(scx( tmax*dx, sz), scy( tmax*dy, sz));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawXMarker(ctx, sx, sy, col, size) {
+  size = size || 8;
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(sx-size, sy-size); ctx.lineTo(sx+size, sy+size);
+  ctx.moveTo(sx+size, sy-size); ctx.lineTo(sx-size, sy+size);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCircle(ctx, sz, col) {
+  ctx.save(); ctx.setLineDash([]); ctx.strokeStyle=col; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for (let i=0; i<=SAMPLE_N; i++) {
+    const v=circPt(i/SAMPLE_N);
+    const px=scx(v[0],sz), py=scy(v[1],sz);
+    i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+  }
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawEllipse(ctx, A, sz, col) {
+  ctx.save(); ctx.setLineDash([]); ctx.strokeStyle=col; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for (let i=0; i<=SAMPLE_N; i++) {
+    const av=mv(A, circPt(i/SAMPLE_N));
+    const px=scx(av[0],sz), py=scy(av[1],sz);
+    i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+  }
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Main draw ─────────────────────────────────────────────────────────────
+function draw() {
+  const A = getA();
+  const sI = cvIn.width, sO = cvOut.width;
+
+  const V = rot(thetaV), U = rot(thetaU);
+  const v1=[V[0][0],V[1][0]], v2=[V[0][1],V[1][1]];
+  const u1=[U[0][0],U[1][0]], u2=[U[0][1],U[1][1]];
+  const s1u1=[sigma1*u1[0],sigma1*u1[1]];
+  const s2u2=[sigma2*u2[0],sigma2*u2[1]];
+
+  // ── Input plot ──
+  ctxIn.clearRect(0,0,sI,sI);
+  drawAxes(ctxIn, sI);
+  drawSubspaceLine(ctxIn, v1[0],v1[1], sI, 'rgba(147,51,234,0.35)');
+  drawSubspaceLine(ctxIn, v2[0],v2[1], sI, 'rgba(13,148,136,0.35)');
+  // sample dots (behind boundary)
+  for (const [x1,x2] of samples) {
+    ctxIn.fillStyle = 'rgba(59,130,246,0.55)';
+    ctxIn.beginPath(); ctxIn.arc(scx(x1,sI), scy(x2,sI), 2.5, 0, 2*Math.PI); ctxIn.fill();
+  }
+  drawCircle(ctxIn, sI, '#bbb');
+  const oxi=scx(0,sI), oyi=scy(0,sI);
+  drawArrow(ctxIn, oxi,oyi, scx(v1[0],sI),scy(v1[1],sI), '#9333ea',2,10);
+  drawDot(ctxIn, scx(v1[0],sI),scy(v1[1],sI), '#9333ea');
+  drawLabel(ctxIn, scx(v1[0],sI),scy(v1[1],sI), oxi,oyi, 'v₁', '#9333ea');
+  drawArrow(ctxIn, oxi,oyi, scx(v2[0],sI),scy(v2[1],sI), '#0d9488',2,10);
+  drawDot(ctxIn, scx(v2[0],sI),scy(v2[1],sI), '#0d9488');
+  drawLabel(ctxIn, scx(v2[0],sI),scy(v2[1],sI), oxi,oyi, 'v₂', '#0d9488');
+  if (clickPt) drawXMarker(ctxIn, scx(clickPt[0],sI), scy(clickPt[1],sI), '#1a1a1a');
+
+  // ── Output plot ──
+  ctxOut.clearRect(0,0,sO,sO);
+  drawAxes(ctxOut, sO);
+  drawSubspaceLine(ctxOut, u1[0],u1[1], sO, 'rgba(147,51,234,0.35)');
+  drawSubspaceLine(ctxOut, u2[0],u2[1], sO, 'rgba(13,148,136,0.35)');
+  // mapped sample dots
+  for (const [x1,x2] of samples) {
+    const ax=mv(A,[x1,x2]);
+    ctxOut.fillStyle = 'rgba(234,88,12,0.55)';
+    ctxOut.beginPath(); ctxOut.arc(scx(ax[0],sO), scy(ax[1],sO), 2.5, 0, 2*Math.PI); ctxOut.fill();
+  }
+  drawEllipse(ctxOut, A, sO, '#999');
+  const oxo=scx(0,sO), oyo=scy(0,sO);
+  if (sigma1 > 1e-4) {
+    drawArrow(ctxOut, oxo,oyo, scx(s1u1[0],sO),scy(s1u1[1],sO), '#9333ea',2,10);
+    drawDot(ctxOut, scx(s1u1[0],sO),scy(s1u1[1],sO), '#9333ea');
+    drawLabel(ctxOut, scx(s1u1[0],sO),scy(s1u1[1],sO), oxo,oyo, 'σ₁u₁', '#9333ea');
+  }
+  if (sigma2 > 1e-4) {
+    drawArrow(ctxOut, oxo,oyo, scx(s2u2[0],sO),scy(s2u2[1],sO), '#0d9488',2,10);
+    drawDot(ctxOut, scx(s2u2[0],sO),scy(s2u2[1],sO), '#0d9488');
+    drawLabel(ctxOut, scx(s2u2[0],sO),scy(s2u2[1],sO), oxo,oyo, 'σ₂u₂', '#0d9488');
+  }
+  if (clickPt) {
+    const ax = mv(A, clickPt);
+    drawXMarker(ctxOut, scx(ax[0],sO), scy(ax[1],sO), '#1a1a1a');
+  }
+
+  // ── Info ──
+  const f = n => n.toFixed(3);
+  const latex = `\\mathbf{A} = \\begin{pmatrix} ${f(A[0][0])} & ${f(A[0][1])} \\\\ ${f(A[1][0])} & ${f(A[1][1])} \\end{pmatrix}`;
+  katex.render(latex, document.getElementById('mat-ctrl'), {displayMode: true, throwOnError: false});
+  document.getElementById('sv-disp').innerHTML =
+    `σ₁ = ${sigma1.toFixed(3)}<br>σ₂ = ${sigma2.toFixed(3)}`;
+  document.getElementById('lbl-nsamples').textContent =
+    samples.length ? `(${samples.length})` : '';
+
+  const g = n => n.toFixed(2);
+  const fmtVec = (name, color, vec) =>
+    `\\textcolor{${color}}{\\mathbf{${name}}} = \\begin{pmatrix} ${g(vec[0])} \\\\ ${g(vec[1])} \\end{pmatrix}`;
+  katex.render(
+    fmtVec('v_1','#9333ea',v1) + '\\quad' + fmtVec('v_2','#0d9488',v2),
+    document.getElementById('vi-V'), {displayMode:true, throwOnError:false}
+  );
+  katex.render(
+    fmtVec('u_1','#9333ea',u1) + '\\quad' + fmtVec('u_2','#0d9488',u2),
+    document.getElementById('vi-U'), {displayMode:true, throwOnError:false}
+  );
+}
+
+// ── Sampling ──────────────────────────────────────────────────────────────
+function addSamples(n) {
+  for (let i = 0; i < n; i++) {
+    const r = Math.sqrt(Math.random());       // uniform in disk
+    const t = Math.random() * 2 * Math.PI;
+    samples.push([r*Math.cos(t), r*Math.sin(t)]);
+  }
+  draw();
+}
+
+function clearSamples() {
+  samples = [];
+  draw();
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────
+[['sl-tV','lbl-tV', v => { thetaV=v; }],
+ ['sl-tU','lbl-tU', v => { thetaU=v; }],
+ ['sl-s1','lbl-s1', v => { sigma1=v; }],
+ ['sl-s2','lbl-s2', v => { sigma2=v; }]
+].forEach(([id, lbl, fn]) => {
+  document.getElementById(id).addEventListener('input', e => {
+    const v = +e.target.value;
+    document.getElementById(lbl).textContent = v.toFixed(2);
+    fn(v); draw();
+  });
+});
+
+// ── Click-to-probe ────────────────────────────────────────────────────────
+cvIn.style.cursor = 'crosshair';
+cvIn.addEventListener('click', e => {
+  const rect = cvIn.getBoundingClientRect();
+  const cx = (e.clientX - rect.left) * (cvIn.width  / rect.width);
+  const cy = (e.clientY - rect.top)  * (cvIn.height / rect.height);
+  clickPt = [
+    (cx - cvIn.width  / 2) / (cvIn.width  / 2) * VIEW,
+   -((cy - cvIn.height / 2) / (cvIn.height / 2)) * VIEW
+  ];
+  draw();
+});
+
+// ── Responsive canvas ─────────────────────────────────────────────────────
+function sync(cv) {
+  const w = cv.offsetWidth;
+  if (cv.width !== w || cv.height !== w) { cv.width = w; cv.height = w; }
+}
+
+const ro = new ResizeObserver(() => { sync(cvIn); sync(cvOut); draw(); });
+ro.observe(cvIn); ro.observe(cvOut);
+requestAnimationFrame(() => { sync(cvIn); sync(cvOut); draw(); });
+</script>
+</body>
+</html>
